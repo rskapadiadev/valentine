@@ -46,27 +46,34 @@ const ValentinePage = () => {
   const displayName = decodeName(nameSlug);
 
   const [accepted, setAccepted] = useState(false);
-  const [noPosition, setNoPosition] = useState<{ top: string; left: string } | null>(null);
+  const [noPosition, setNoPosition] = useState<{ top: number; left: number } | null>(null);
   const [playfulMsg, setPlayfulMsg] = useState("");
   const [msgIndex, setMsgIndex] = useState(0);
   const [burstHearts, setBurstHearts] = useState<BurstHeart[]>([]);
   const [yesScale, setYesScale] = useState(1);
   const noButtonRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
-  // ── No button escape logic ──
+  // ── No button escape logic (moves within the card) ──
 
   const handleNoEscape = useCallback(() => {
-    const padding = 80;
-    const maxX = typeof window !== "undefined" ? window.innerWidth - padding * 2 : 300;
-    const maxY = typeof window !== "undefined" ? window.innerHeight - padding * 2 : 300;
+    const card = cardRef.current;
+    const noBtn = noButtonRef.current;
+    if (!card || !noBtn) return;
 
-    const newLeft = Math.max(padding, Math.floor(Math.random() * maxX));
-    const newTop = Math.max(padding, Math.floor(Math.random() * maxY));
+    const cardW = card.offsetWidth;
+    const cardH = card.offsetHeight;
+    const btnW = noBtn.offsetWidth;
+    const btnH = noBtn.offsetHeight;
 
-    setNoPosition({
-      top: `${newTop}px`,
-      left: `${newLeft}px`,
-    });
+    const padding = 12;
+    const maxLeft = cardW - btnW - padding;
+    const maxTop = cardH - btnH - padding;
+
+    const newLeft = Math.max(padding, Math.floor(Math.random() * maxLeft));
+    const newTop = Math.max(padding, Math.floor(Math.random() * maxTop));
+
+    setNoPosition({ top: newTop, left: newLeft });
 
     // Show playful message
     setPlayfulMsg(PLAYFUL_MESSAGES[msgIndex % PLAYFUL_MESSAGES.length]);
@@ -93,7 +100,7 @@ const ValentinePage = () => {
     setBurstHearts(hearts);
   };
 
-  // ── Reset no-button position on window resize ──
+  // ── Reset no-button position on window resize so it stays inside card ──
 
   useEffect(() => {
     const handleResize = () => {
@@ -222,7 +229,8 @@ const ValentinePage = () => {
       <FloatingHearts />
 
       <motion.div
-        className="relative z-10 flex max-w-lg flex-col items-center gap-6 rounded-3xl p-8 text-center sm:gap-8 sm:p-12"
+        ref={cardRef}
+        className="relative z-10 flex max-w-lg flex-col items-center gap-6 overflow-hidden rounded-3xl p-8 text-center sm:gap-8 sm:p-12"
         style={cardStyle}
         initial={{ opacity: 0, y: 30, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -289,46 +297,32 @@ const ValentinePage = () => {
             Yes 💖
           </motion.button>
 
-          {/* No button - escapes! */}
-          {!noPosition ? (
-            <motion.button
-              ref={noButtonRef}
-              onMouseEnter={handleNoEscape}
-              onTouchStart={handleNoEscape}
-              className="rounded-full px-10 py-4 text-xl font-semibold shadow-md sm:text-2xl"
-              style={{
-                backgroundColor: "#ffffff",
-                color: "#f43f5e",
-                border: "2px solid #fda4af",
-              }}
-              whileHover={{ scale: 1.02 }}
-              aria-label="No"
-              tabIndex={0}
-            >
-              No 😢
-            </motion.button>
-          ) : (
-            <motion.button
-              ref={noButtonRef}
-              onMouseEnter={handleNoEscape}
-              onTouchStart={handleNoEscape}
-              className="fixed z-50 rounded-full px-8 py-3 text-lg font-semibold shadow-lg"
-              style={{
-                top: noPosition.top,
-                left: noPosition.left,
-                backgroundColor: "#ffffff",
-                color: "#f43f5e",
-                border: "2px solid #fda4af",
-              }}
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 500, damping: 20 }}
-              aria-label="No"
-              tabIndex={0}
-            >
-              No 😢
-            </motion.button>
-          )}
+          {/* No button - escapes inside the card! */}
+          <motion.button
+            ref={noButtonRef}
+            onMouseEnter={handleNoEscape}
+            onTouchStart={handleNoEscape}
+            className="rounded-full px-10 py-4 text-xl font-semibold shadow-md sm:text-2xl"
+            style={{
+              backgroundColor: "#ffffff",
+              color: "#f43f5e",
+              border: "2px solid #fda4af",
+              ...(noPosition
+                ? {
+                    position: "absolute" as const,
+                    top: noPosition.top,
+                    left: noPosition.left,
+                    zIndex: 20,
+                  }
+                : {}),
+            }}
+            animate={noPosition ? { scale: 1 } : {}}
+            transition={{ type: "spring", stiffness: 500, damping: 20 }}
+            aria-label="No"
+            tabIndex={0}
+          >
+            No 😢
+          </motion.button>
         </div>
       </motion.div>
     </main>
